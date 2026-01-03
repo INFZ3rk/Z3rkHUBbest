@@ -14,6 +14,8 @@ local lockEnabled = false
 local teleportEnabled, noclipEnabled = false, false
 local teleportKey = Enum.KeyCode.Z
 local FOV = 70
+local thirdPersonEnabled = false
+
 
 local espEnabled = false
 local espColor = Color3.fromRGB(255,0,0)
@@ -299,6 +301,25 @@ addToggle(yStart + gap*2,"Noclip",function(v) noclipEnabled = v end)
 addSlider(yStart + gap*3,"FOV",70,120,FOV,function(v) FOV = v camera.FieldOfView = FOV end)
 addToggle(yStart + gap*4,"ESP",function(v) espEnabled = v end)
 addToggle(yStart + gap*5,'Invisibility (Client)', setInvisible)
+addToggle(yStart + gap*6, "Third Person", function(state)
+    thirdPersonEnabled = state
+    local player = game.Players.LocalPlayer
+    if state then
+        player.CameraMode = Enum.CameraMode.Classic
+        player.CameraMinZoomDistance = 8
+        player.CameraMaxZoomDistance = 15
+    else
+        player.CameraMode = Enum.CameraMode.LockFirstPerson
+    end
+
+    player.CharacterAdded:Connect(function()
+        if thirdPersonEnabled then
+            player.CameraMode = Enum.CameraMode.Classic
+            player.CameraMinZoomDistance = 8
+            player.CameraMaxZoomDistance = 15
+        end
+    end)
+end)
 
 -- ==========================
 -- TELEPORT TROLL + SPIN SPEED SLIDER
