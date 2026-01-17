@@ -434,3 +434,81 @@ task.delay(3,function()
     welcomeGui:Destroy()
     gui.Enabled = true
 end)
+
+do
+    local UIS = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+
+    local baseOffset = content.Position.Y.Offset or 0
+    local scrollOffset = 0
+    local maxOffset = 0
+    local scrollSpeed = 30
+
+    local function recomputeBounds()
+        if content.AbsoluteSize.Y == 0 then
+            return
+        end
+
+        local maxBottom = 0
+        for _, child in ipairs(content:GetChildren()) do
+            if child:IsA("GuiObject") then
+                local posY = 0
+                if child.Position.Y.Scale ~= 0 then
+                    posY = child.Position.Y.Scale * content.AbsoluteSize.Y + child.Position.Y.Offset
+                else
+                    posY = child.Position.Y.Offset
+                end
+
+                local sizeY = 0
+                if child.Size.Y.Scale ~= 0 then
+                    sizeY = child.Size.Y.Scale * content.AbsoluteSize.Y + child.Size.Y.Offset
+                else
+                    sizeY = child.Size.Y.Offset
+                end
+
+                maxBottom = math.max(maxBottom, posY + sizeY)
+            end
+        end
+
+        local visibleH = content.AbsoluteSize.Y
+        maxOffset = math.max(0, maxBottom - visibleH)
+        scrollOffset = math.clamp(scrollOffset, 0, maxOffset)
+        content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
+    end
+
+    if content.AbsoluteSize.Y == 0 then
+        content:GetPropertyChangedSignal("AbsoluteSize"):Wait()
+    end
+    recomputeBounds()
+
+    content.ChildAdded:Connect(function()
+        task.defer(recomputeBounds)
+    end)
+    content.ChildRemoved:Connect(function()
+        task.defer(recomputeBounds)
+    end)
+
+    content:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        task.defer(recomputeBounds)
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            local delta = input.Position.Z or input.Position.Y or 0
+            scrollOffset = math.clamp(scrollOffset - delta * scrollSpeed, 0, maxOffset)
+            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
+        end
+    end)
+
+    UIS.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.PageDown then
+            scrollOffset = math.clamp(scrollOffset + (content.AbsoluteSize.Y * 0.6), 0, maxOffset)
+            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
+        elseif input.KeyCode == Enum.KeyCode.PageUp then
+            scrollOffset = math.clamp(scrollOffset - (content.AbsoluteSize.Y * 0.6), 0, maxOffset)
+            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
+        end
+    end)
+end
+
