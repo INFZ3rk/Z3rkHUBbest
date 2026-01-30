@@ -16,7 +16,6 @@ local teleportKey = Enum.KeyCode.Z
 local FOV = 70
 local thirdPersonEnabled = false
 
-
 local espEnabled = false
 local espColor = Color3.fromRGB(255,0,0)
 local espObjects = {}
@@ -88,8 +87,8 @@ gui.Enabled = false
 
 local main = Instance.new("Frame")
 main.Parent = gui
-main.Size = UDim2.new(0,600,0,500) -- aumentado para que quepa el slider del Spin Speed
-main.Position = UDim2.new(0.5,-300,0.5,-250) -- centrado con la nueva altura
+main.Size = UDim2.new(0,600,0,500)
+main.Position = UDim2.new(0.5,-300,0.5,-250)
 main.BackgroundColor3 = Color3.fromRGB(12,12,12)
 main.BorderSizePixel = 0
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
@@ -140,10 +139,27 @@ minimizeBtn.TextSize = 28
 minimizeBtn.TextColor3 = Color3.fromRGB(200,200,200)
 minimizeBtn.BackgroundTransparency = 1
 
-local content = Instance.new("Frame", main)
+-- SCROLLINGFRAME REAL (reemplaza tu Frame anterior)
+local content = Instance.new("ScrollingFrame", main)
 content.Position = UDim2.new(0,0,0,50)
 content.Size = UDim2.new(1,0,1,-50)
 content.BackgroundTransparency = 1
+
+-- hace que los toggles que se salen NO se vean
+content.ClipsDescendants = true
+
+-- barra de scroll visible
+content.ScrollBarThickness = 6
+content.ScrollBarImageColor3 = Color3.fromRGB(255,0,0)
+
+-- el scroll se ajusta solo según lo que añadas
+content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+content.CanvasSize = UDim2.new(0,0,0,0)
+
+-- organiza tus toggles sin que se solapen
+local layout = Instance.new("UIListLayout", content)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0,10)
 
 local minimized = false
 minimizeBtn.MouseButton1Click:Connect(function()
@@ -301,6 +317,7 @@ addToggle(yStart + gap*2,"Noclip",function(v) noclipEnabled = v end)
 addSlider(yStart + gap*3,"FOV",70,120,FOV,function(v) FOV = v camera.FieldOfView = FOV end)
 addToggle(yStart + gap*4,"ESP",function(v) espEnabled = v end)
 addToggle(yStart + gap*5,'Invisibility (Client)', setInvisible)
+
 addToggle(yStart + gap*6, "Third Person", function(state)
     thirdPersonEnabled = state
     local player = game.Players.LocalPlayer
@@ -321,16 +338,26 @@ addToggle(yStart + gap*6, "Third Person", function(state)
     end)
 end)
 
--- ==========================
--- TELEPORT TROLL + SPIN SPEED SLIDER
--- ==========================
+-- NUEVO: SPEED
+local speedEnabled = false
+local speedValue = 16
+
+addToggle(yStart + gap*7, "Speed", function(v)
+    speedEnabled = v
+end)
+
+addSlider(yStart + gap*8, "Speed Value", 16, 200, 16, function(v)
+    speedValue = v
+end)
+
+-- TELEPORT TROLL
 local spinTarget = nil
 local spinEnabled = false
 local spinRadius = 5
 local spinSpeed = 4
 local angle = 0
 
-addToggle(yStart + gap*6,"Teleport Troll",function(state)
+addToggle(yStart + gap*9,"Teleport Troll",function(state)
     spinEnabled = state
     if state then
         spinTarget = getClosest()
@@ -339,8 +366,7 @@ addToggle(yStart + gap*6,"Teleport Troll",function(state)
     end
 end)
 
--- Slider para la velocidad del spin
-addSlider(yStart + gap*7,"Spin Speed",1,20,spinSpeed,function(v)
+addSlider(yStart + gap*10,"Spin Speed",1,20,spinSpeed,function(v)
     spinSpeed = v
 end)
 
@@ -427,6 +453,12 @@ RunService.RenderStepped:Connect(function(dt)
     if invisibleEnabled and player.Character then
         setInvisible(true)
     end
+
+    -- SPEED FORZADO
+    if speedEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
+        local hum = player.Character.Humanoid
+        hum.WalkSpeed = speedValue
+    end
 end)
 
 -- WELCOME GUI DESTROY
@@ -511,4 +543,3 @@ do
         end
     end)
 end
-
