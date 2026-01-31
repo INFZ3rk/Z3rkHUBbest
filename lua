@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -58,12 +59,67 @@ local espObjects = {}
 local invisibleEnabled = false
 
 ---------------------------------------------------------------------
--- NUEVAS FUNCIONES QUE AÑADIREMOS EN PARTES 2/4 Y 3/4:
--- JumpPower
--- Fly premium CFrame
--- FullBright
--- Anti-AFK
+-- SISTEMA DE NOTIFICACIONES PREMIUM
 ---------------------------------------------------------------------
+local notificationGui = Instance.new("ScreenGui")
+notificationGui.Name = "NotificationGUI"
+notificationGui.Parent = player:WaitForChild("PlayerGui")
+notificationGui.IgnoreGuiInset = true
+notificationGui.ResetOnSpawn = false
+
+local function notify(message, duration)
+    duration = duration or 3
+
+    local frame = Instance.new("Frame")
+    frame.Parent = notificationGui
+    frame.Size = UDim2.new(0, 260, 0, 60)
+    frame.Position = UDim2.new(1, 300, 0, 20)
+    frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local text = Instance.new("TextLabel")
+    text.Parent = frame
+    text.Size = UDim2.new(1, -20, 1, -20)
+    text.Position = UDim2.new(0, 10, 0, 10)
+    text.BackgroundTransparency = 1
+    text.Text = message
+    text.TextColor3 = Color3.fromRGB(255,255,255)
+    text.Font = Enum.Font.GothamBold
+    text.TextScaled = true
+
+    local bar = Instance.new("Frame")
+    bar.Parent = frame
+    bar.Size = UDim2.new(1,0,0,5)
+    bar.Position = UDim2.new(0,0,1,-5)
+    bar.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    bar.BorderSizePixel = 0
+
+    frame:TweenPosition(
+        UDim2.new(1, -280, 0, 20),
+        Enum.EasingDirection.Out,
+        Enum.EasingStyle.Quad,
+        0.4,
+        true
+    )
+
+    task.spawn(function()
+        for i = 1,100 do
+            bar.Size = UDim2.new(1 - (i/100), 0, 0, 5)
+            task.wait(duration/100)
+        end
+
+        frame:TweenPosition(
+            UDim2.new(1, 300, 0, 20),
+            Enum.EasingDirection.In,
+            Enum.EasingStyle.Quad,
+            0.4,
+            true
+        )
+        task.wait(0.4)
+        frame:Destroy()
+    end)
+end
 
 ---------------------------------------------------------------------
 -- WELCOME GUI
@@ -160,7 +216,7 @@ minimizeBtn.TextColor3 = Color3.fromRGB(200,200,200)
 minimizeBtn.BackgroundTransparency = 1
 
 ---------------------------------------------------------------------
--- SCROLLINGFRAME ARREGLADO
+-- SCROLLINGFRAME
 ---------------------------------------------------------------------
 local content = Instance.new("ScrollingFrame", main)
 content.Position = UDim2.new(0,0,0,50)
@@ -176,6 +232,7 @@ local layout = Instance.new("UIListLayout", content)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0,10)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
 ---------------------------------------------------------------------
 -- DRAG DEL HUB
 ---------------------------------------------------------------------
@@ -199,7 +256,6 @@ UIS.InputChanged:Connect(function(input)
         )
     end
 end)
-
 ---------------------------------------------------------------------
 -- SISTEMA DE TOGGLES Y SLIDERS
 ---------------------------------------------------------------------
@@ -322,15 +378,59 @@ local function addSlider(y,text,min,max,default,callback)
 end
 
 ---------------------------------------------------------------------
+-- COMPATIBILIDAD ENTRE TOGGLES
+---------------------------------------------------------------------
+local function enforceCompatibility(toggleName, state)
+    if toggleName == "Fly" and state and noclipEnabled then
+        noclipEnabled = false
+        notify("Fly no es compatible con Noclip. Noclip desactivado.")
+    end
+
+    if toggleName == "Noclip" and state and flyEnabled then
+        flyEnabled = false
+        flyActive = false
+        notify("Noclip no es compatible con Fly. Fly desactivado.")
+    end
+
+    if toggleName == "Aimbot" and state and teleportEnabled then
+        teleportEnabled = false
+        notify("Aimbot no es compatible con Teleport. Teleport desactivado.")
+    end
+
+    if toggleName == "Teleport" and state and lockEnabled then
+        lockEnabled = false
+        notify("Teleport no es compatible con Aimbot. Aimbot desactivado.")
+    end
+end
+
+---------------------------------------------------------------------
 -- AÑADIR TODOS LOS TOGGLES Y SLIDERS
 ---------------------------------------------------------------------
 local yStart, gap = 20, 70
 
-addToggle(yStart + gap*0,"Aimbot",function(v) lockEnabled = v end, Enum.KeyCode.Q)
-addToggle(yStart + gap*1,"Teleport",function(v) teleportEnabled = v end, teleportKey)
-addToggle(yStart + gap*2,"Noclip",function(v) noclipEnabled = v end)
-addSlider(yStart + gap*3,"FOV",70,120,FOV,function(v) FOV = v camera.FieldOfView = FOV end)
-addToggle(yStart + gap*4,"ESP",function(v) espEnabled = v end)
+addToggle(yStart + gap*0,"Aimbot",function(v)
+    lockEnabled = v
+    enforceCompatibility("Aimbot", v)
+end, Enum.KeyCode.Q)
+
+addToggle(yStart + gap*1,"Teleport",function(v)
+    teleportEnabled = v
+    enforceCompatibility("Teleport", v)
+end, teleportKey)
+
+addToggle(yStart + gap*2,"Noclip",function(v)
+    noclipEnabled = v
+    enforceCompatibility("Noclip", v)
+end)
+
+addSlider(yStart + gap*3,"FOV",70,120,FOV,function(v)
+    FOV = v
+    camera.FieldOfView = FOV
+end)
+
+addToggle(yStart + gap*4,"ESP",function(v)
+    espEnabled = v
+end)
 
 ---------------------------------------------------------------------
 -- INVISIBILIDAD
@@ -354,7 +454,7 @@ addToggle(yStart + gap*5,'Invisibility (Client)', setInvisible)
 ---------------------------------------------------------------------
 addToggle(yStart + gap*6, "Third Person", function(state)
     thirdPersonEnabled = state
-    local pl = game.Players.LocalPlayer
+    local pl = player
     if state then
         pl.CameraMode = Enum.CameraMode.Classic
         pl.CameraMinZoomDistance = 8
@@ -387,7 +487,7 @@ addSlider(yStart + gap*8, "Speed Value", 16, 200, 16, function(v)
 end)
 
 ---------------------------------------------------------------------
--- JUMP POWER (NUEVO)
+-- JUMP POWER
 ---------------------------------------------------------------------
 local jumpEnabled = false
 local jumpValue = 50
@@ -401,7 +501,7 @@ addSlider(yStart + gap*10, "Jump Value", 10, 200, 50, function(v)
 end)
 
 ---------------------------------------------------------------------
--- FLY PREMIUM CFrame (NUEVO)
+-- FLY NORMAL (CLÁSICO RÍGIDO)
 ---------------------------------------------------------------------
 local flyEnabled = false
 local flyActive = false
@@ -410,9 +510,8 @@ local flyKey = Enum.KeyCode.F
 
 addToggle(yStart + gap*11, "Fly (F)", function(v)
     flyEnabled = v
-    if not v then
-        flyActive = false
-    end
+    if not v then flyActive = false end
+    enforceCompatibility("Fly", v)
 end, flyKey)
 
 addSlider(yStart + gap*12, "Fly Speed", 1, 10, 2, function(v)
@@ -420,28 +519,33 @@ addSlider(yStart + gap*12, "Fly Speed", 1, 10, 2, function(v)
 end)
 
 ---------------------------------------------------------------------
--- FULLBRIGHT (NUEVO)
+-- FULLBRIGHT (GUARDANDO VALORES ORIGINALES)
 ---------------------------------------------------------------------
 local fullBrightEnabled = false
-local lighting = game:GetService("Lighting")
+
+local originalLighting = {
+    Ambient = Lighting.Ambient,
+    Brightness = Lighting.Brightness,
+    GlobalShadows = Lighting.GlobalShadows
+}
 
 local function applyFullBright(state)
     fullBrightEnabled = state
     if state then
-        lighting.Ambient = Color3.new(1,1,1)
-        lighting.Brightness = 2
-        lighting.GlobalShadows = false
+        Lighting.Ambient = Color3.new(1,1,1)
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
     else
-        lighting.Ambient = Color3.new(0,0,0)
-        lighting.Brightness = 1
-        lighting.GlobalShadows = true
+        Lighting.Ambient = originalLighting.Ambient
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
     end
 end
 
 addToggle(yStart + gap*13, "FullBright", applyFullBright)
 
 ---------------------------------------------------------------------
--- ANTI-AFK (NUEVO)
+-- ANTI-AFK
 ---------------------------------------------------------------------
 local antiAFKEnabled = false
 
@@ -449,10 +553,10 @@ addToggle(yStart + gap*14, "Anti-AFK", function(v)
     antiAFKEnabled = v
 end)
 ---------------------------------------------------------------------
--- INPUT (AIMBOT, TELEPORT, FLY)
+-- INPUT (AIMBOT, TELEPORT, FLY, ABRIR HUB)
 ---------------------------------------------------------------------
 UIS.InputBegan:Connect(function(input, g)
-    if g then return end  -- No activar si escribe en chat
+    if g then return end
 
     -- Abrir/Cerrar HUB
     if input.KeyCode == Enum.KeyCode.M then
@@ -495,7 +599,7 @@ UIS.InputBegan:Connect(function(input, g)
     end
 
     -----------------------------------------------------------------
-    -- FLY (ACTIVAR/DESACTIVAR CON F)
+    -- FLY NORMAL (ACTIVAR/DESACTIVAR CON F)
     -----------------------------------------------------------------
     if input.KeyCode == flyKey and flyEnabled then
         flyActive = not flyActive
@@ -503,20 +607,21 @@ UIS.InputBegan:Connect(function(input, g)
 end)
 
 ---------------------------------------------------------------------
--- ANTI-AFK
+-- ANTI-AFK LOOP
 ---------------------------------------------------------------------
 task.spawn(function()
     while true do
         task.wait(30)
         if antiAFKEnabled then
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+            local vu = game:GetService("VirtualUser")
+            vu:CaptureController()
+            vu:ClickButton2(Vector2.new())
         end
     end
 end)
 
 ---------------------------------------------------------------------
--- ESP Y Noclip
+-- ESP Y LIMPIEZA
 ---------------------------------------------------------------------
 Players.PlayerRemoving:Connect(function(p)
     if espObjects[p] then
@@ -524,6 +629,46 @@ Players.PlayerRemoving:Connect(function(p)
         espObjects[p] = nil
     end
 end)
+
+---------------------------------------------------------------------
+-- FLY NORMAL (BODYGYRO + BODYVELOCITY)
+---------------------------------------------------------------------
+local function enableFly()
+    local char = player.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- Crear fuerzas
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "FlyVelocity"
+    bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+    bv.Velocity = Vector3.new(0,0,0)
+    bv.Parent = hrp
+
+    local bg = Instance.new("BodyGyro")
+    bg.Name = "FlyGyro"
+    bg.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+    bg.P = 1e5
+    bg.CFrame = hrp.CFrame
+    bg.Parent = hrp
+end
+
+local function disableFly()
+    local char = player.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if hrp:FindFirstChild("FlyVelocity") then
+        hrp.FlyVelocity:Destroy()
+    end
+    if hrp:FindFirstChild("FlyGyro") then
+        hrp.FlyGyro:Destroy()
+    end
+end
 
 ---------------------------------------------------------------------
 -- RENDERSTEPPED (LÓGICA PRINCIPAL)
@@ -573,29 +718,6 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     -----------------------------------------------------------------
-    -- TELEPORT TROLL
-    -----------------------------------------------------------------
-    if spinEnabled
-        and spinTarget
-        and spinTarget.Parent
-        and spinTarget:IsA("BasePart")
-        and player.Character
-        and player.Character:FindFirstChild("HumanoidRootPart")
-    then
-        local hrp = player.Character.HumanoidRootPart
-        local targetHRP = spinTarget
-
-        angle += spinSpeed * dt
-        local offset = Vector3.new(
-            math.cos(angle) * spinRadius,
-            0,
-            math.sin(angle) * spinRadius
-        )
-
-        hrp.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
-    end
-
-    -----------------------------------------------------------------
     -- INVISIBILIDAD
     -----------------------------------------------------------------
     if invisibleEnabled and player.Character then
@@ -621,36 +743,43 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     -----------------------------------------------------------------
-    -- FLY PREMIUM CFrame
+    -- FLY NORMAL (MOVIMIENTO)
     -----------------------------------------------------------------
-    if flyActive and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = player.Character.HumanoidRootPart
-        local move = Vector3.new()
+    if flyActive and flyEnabled and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
 
-        if UIS:IsKeyDown(Enum.KeyCode.W) then move += camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then move -= camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then move -= camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then move += camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then move -= Vector3.new(0,1,0) end
+            -- Si no existen fuerzas, crearlas
+            if not hrp:FindFirstChild("FlyVelocity") then
+                enableFly()
+            end
 
-        if move.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (move.Unit * flySpeed)
-        end
+            local bv = hrp:FindFirstChild("FlyVelocity")
+            local bg = hrp:FindFirstChild("FlyGyro")
 
-        -- Evitar que el personaje caiga
-        if player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.PlatformStand = true
+            local move = Vector3.new()
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then move += camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then move -= camera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then move -= camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then move += camera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then move -= Vector3.new(0,1,0) end
+
+            if move.Magnitude > 0 then
+                bv.Velocity = move.Unit * (flySpeed * 20)
+            else
+                bv.Velocity = Vector3.new(0,0,0)
+            end
+
+            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
         end
     else
-        -- Restaurar control normal
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.PlatformStand = false
-        end
+        disableFly()
     end
 end)
 ---------------------------------------------------------------------
--- MINIMIZAR (ARREGLADO)
+-- MINIMIZAR
 ---------------------------------------------------------------------
 local minimized = false
 minimizeBtn.MouseButton1Click:Connect(function()
