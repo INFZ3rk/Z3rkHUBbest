@@ -5,11 +5,41 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
-local locked, target = false, nil
-local lockKey = Enum.KeyCode.Q
-local lockSmoothness = 0.15
-local lockCooldown = false
+-- AIMBOT NUEVO
 local lockEnabled = false
+local lockTime = 0.20
+local locking = false
+
+local function getClosestPart()
+    local partNames = {
+        "Head","Torso","UpperTorso","LowerTorso","HumanoidRootPart",
+        "Left Leg","Right Leg","LeftUpperLeg","RightUpperLeg",
+        "LeftLowerLeg","RightLowerLeg"
+    }
+
+    local closestPart, dist = nil, math.huge
+    local center = camera.ViewportSize / 2
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            for _, name in ipairs(partNames) do
+                local part = p.Character:FindFirstChild(name)
+                if part then
+                    local pos, onScreen = camera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                        if d < dist then
+                            dist = d
+                            closestPart = part
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPart
+end
 
 local teleportEnabled, noclipEnabled = false, false
 local teleportKey = Enum.KeyCode.Z
@@ -20,34 +50,7 @@ local espEnabled = false
 local espColor = Color3.fromRGB(255,0,0)
 local espObjects = {}
 
-local invisibleEnabled = false -- invisibilidad solo para el cliente
-
--- FUNCIONES
-local function getClosest()
-    local closest, dist = nil, math.huge
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-            local d = (p.Character.Head.Position - camera.CFrame.Position).Magnitude
-            if d < dist then
-                dist, closest = d, p
-            end
-        end
-    end
-    return closest
-end
-
-local function setInvisible(state)
-    invisibleEnabled = state
-    if player.Character then
-        for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                part.LocalTransparencyModifier = state and 1 or 0
-            elseif part:IsA("Decal") then
-                part.LocalTransparencyModifier = state and 1 or 0
-            end
-        end
-    end
-end
+local invisibleEnabled = false
 
 -- WELCOME GUI
 local welcomeGui = Instance.new("ScreenGui")
@@ -73,8 +76,6 @@ welcomeText.Text = "Welcome to INFZ3rk HUB!"
 welcomeText.TextColor3 = Color3.fromRGB(255,0,0)
 welcomeText.Font = Enum.Font.GothamBold
 welcomeText.TextScaled = true
-welcomeText.TextXAlignment = Enum.TextXAlignment.Center
-welcomeText.TextYAlignment = Enum.TextYAlignment.Center
 
 -- MAIN GUI
 local gui = Instance.new("ScreenGui")
@@ -112,12 +113,9 @@ title.BackgroundTransparency = 1
 title.Text = "INFZ3rk HUB"
 title.TextColor3 = Color3.fromRGB(255,0,0)
 title.Font = Enum.Font.GothamBold
-title.TextScaled = false
 title.TextSize = 32
-title.TextXAlignment = Enum.TextXAlignment.Center
-title.TextYAlignment = Enum.TextYAlignment.Center
 
--- CLOSE Y MINIMIZE
+-- BOTONES
 local closeBtn = Instance.new("TextButton", topBar)
 closeBtn.Size = UDim2.new(0,40,0,40)
 closeBtn.Position = UDim2.new(1,-45,0,5)
@@ -139,35 +137,21 @@ minimizeBtn.TextSize = 28
 minimizeBtn.TextColor3 = Color3.fromRGB(200,200,200)
 minimizeBtn.BackgroundTransparency = 1
 
--- SCROLLINGFRAME REAL (reemplaza tu Frame anterior)
+-- SCROLLINGFRAME ARREGLADO
 local content = Instance.new("ScrollingFrame", main)
 content.Position = UDim2.new(0,0,0,50)
 content.Size = UDim2.new(1,0,1,-50)
 content.BackgroundTransparency = 1
-
--- hace que los toggles que se salen NO se vean
 content.ClipsDescendants = true
-
--- barra de scroll visible
 content.ScrollBarThickness = 6
 content.ScrollBarImageColor3 = Color3.fromRGB(255,0,0)
-
--- el scroll se ajusta solo según lo que añadas
 content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 content.CanvasSize = UDim2.new(0,0,0,0)
 
--- organiza tus toggles sin que se solapen
 local layout = Instance.new("UIListLayout", content)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0,10)
-
-local minimized = false
-minimizeBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    content.Visible = not minimized
-    main.Size = minimized and UDim2.new(0,600,0,50) or UDim2.new(0,600,0,500)
-end)
-
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 -- DRAG
 local dragging, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
@@ -311,34 +295,49 @@ end
 
 -- ADD TOGGLES
 local yStart, gap = 20, 50
-addToggle(yStart + gap*0,"Aimbot",function(v) lockEnabled = v end, lockKey)
+addToggle(yStart + gap*0,"Aimbot",function(v) lockEnabled = v end, Enum.KeyCode.Q)
 addToggle(yStart + gap*1,"Teleport",function(v) teleportEnabled = v end, teleportKey)
 addToggle(yStart + gap*2,"Noclip",function(v) noclipEnabled = v end)
 addSlider(yStart + gap*3,"FOV",70,120,FOV,function(v) FOV = v camera.FieldOfView = FOV end)
 addToggle(yStart + gap*4,"ESP",function(v) espEnabled = v end)
+
+-- Invisibilidad
+local function setInvisible(state)
+    invisibleEnabled = state
+    if player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.LocalTransparencyModifier = state and 1 or 0
+            elseif part:IsA("Decal") then
+                part.LocalTransparencyModifier = state and 1 or 0
+            end
+        end
+    end
+end
 addToggle(yStart + gap*5,'Invisibility (Client)', setInvisible)
 
+-- Third Person
 addToggle(yStart + gap*6, "Third Person", function(state)
     thirdPersonEnabled = state
-    local player = game.Players.LocalPlayer
+    local pl = game.Players.LocalPlayer
     if state then
-        player.CameraMode = Enum.CameraMode.Classic
-        player.CameraMinZoomDistance = 8
-        player.CameraMaxZoomDistance = 15
+        pl.CameraMode = Enum.CameraMode.Classic
+        pl.CameraMinZoomDistance = 8
+        pl.CameraMaxZoomDistance = 15
     else
-        player.CameraMode = Enum.CameraMode.LockFirstPerson
+        pl.CameraMode = Enum.CameraMode.LockFirstPerson
     end
 
-    player.CharacterAdded:Connect(function()
+    pl.CharacterAdded:Connect(function()
         if thirdPersonEnabled then
-            player.CameraMode = Enum.CameraMode.Classic
-            player.CameraMinZoomDistance = 8
-            player.CameraMaxZoomDistance = 15
+            pl.CameraMode = Enum.CameraMode.Classic
+            pl.CameraMinZoomDistance = 8
+            pl.CameraMaxZoomDistance = 15
         end
     end)
 end)
 
--- NUEVO: SPEED
+-- SPEED
 local speedEnabled = false
 local speedValue = 16
 
@@ -360,7 +359,7 @@ local angle = 0
 addToggle(yStart + gap*9,"Teleport Troll",function(state)
     spinEnabled = state
     if state then
-        spinTarget = getClosest()
+        spinTarget = getClosestPart()
     else
         spinTarget = nil
     end
@@ -369,45 +368,63 @@ end)
 addSlider(yStart + gap*10,"Spin Speed",1,20,spinSpeed,function(v)
     spinSpeed = v
 end)
-
--- INPUT ORIGINAL
-UIS.InputBegan:Connect(function(input,g)
+-- INPUT ORIGINAL (AIMBOT NUEVO)
+UIS.InputBegan:Connect(function(input, g)
     if g then return end
-    if input.KeyCode == Enum.KeyCode.M then gui.Enabled = not gui.Enabled end
 
-    if input.KeyCode == lockKey and not lockCooldown and lockEnabled then
-        lockCooldown = true
-        locked = true
-        target = getClosest()
-        task.delay(0.3,function()
-            locked = false
-            target = nil
-            lockCooldown = false
+    -- Abrir/Cerrar HUB
+    if input.KeyCode == Enum.KeyCode.M then
+        gui.Enabled = not gui.Enabled
+    end
+
+    -- AIMBOT NUEVO
+    if input.KeyCode == Enum.KeyCode.Q and lockEnabled and not locking then
+        locking = true
+
+        local target = getClosestPart()
+        if not target then
+            locking = false
+            return
+        end
+
+        local start = tick()
+        local conn
+        conn = RunService.RenderStepped:Connect(function()
+            if tick() - start >= lockTime then
+                conn:Disconnect()
+                locking = false
+                return
+            end
+            camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
         end)
     end
 
+    -- TELEPORT
     if input.KeyCode == teleportKey and teleportEnabled then
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(player:GetMouse().Hit.Position + Vector3.new(0,3,0))
+            char.HumanoidRootPart.CFrame =
+                CFrame.new(player:GetMouse().Hit.Position + Vector3.new(0,3,0))
         end
     end
 end)
 
 -- ESP Y Noclip
 Players.PlayerRemoving:Connect(function(p)
-    if espObjects[p] then espObjects[p]:Remove() espObjects[p]=nil end
+    if espObjects[p] then
+        espObjects[p]:Remove()
+        espObjects[p] = nil
+    end
 end)
 
 RunService.RenderStepped:Connect(function(dt)
+    -- Noclip
     if noclipEnabled and player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
         end
-    end
-
-    if locked and target and target.Character and target.Character:FindFirstChild("Head") then
-        camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, target.Character.Head.Position), lockSmoothness)
     end
 
     -- ESP
@@ -421,31 +438,42 @@ RunService.RenderStepped:Connect(function(dt)
                     box.Visible = true
                     espObjects[p] = box
                 end
-                local pos,onScreen = camera:WorldToViewportPoint(p.Character.Head.Position)
+
+                local pos, onScreen = camera:WorldToViewportPoint(p.Character.Head.Position)
                 if onScreen then
-                    espObjects[p].Position = Vector2.new(pos.X-10,pos.Y-10)
-                    espObjects[p].Size = Vector2.new(20,20)
+                    espObjects[p].Position = Vector2.new(pos.X - 10, pos.Y - 10)
+                    espObjects[p].Size = Vector2.new(20, 20)
                     espObjects[p].Visible = true
                 else
                     espObjects[p].Visible = false
                 end
-            elseif espObjects[p] then
-                espObjects[p]:Remove()
-                espObjects[p]=nil
+            else
+                if espObjects[p] then
+                    espObjects[p]:Remove()
+                    espObjects[p] = nil
+                end
             end
         end
     end
 
     -- TELEPORT TROLL
-    if spinEnabled and spinTarget and spinTarget.Character and spinTarget.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+    if spinEnabled
+        and spinTarget
+        and spinTarget.Parent
+        and spinTarget:IsA("BasePart")
+        and player.Character
+        and player.Character:FindFirstChild("HumanoidRootPart")
+    then
         local hrp = player.Character.HumanoidRootPart
-        local targetHRP = spinTarget.Character.HumanoidRootPart
+        local targetHRP = spinTarget
+
         angle += spinSpeed * dt
         local offset = Vector3.new(
             math.cos(angle) * spinRadius,
             0,
             math.sin(angle) * spinRadius
         )
+
         hrp.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
     end
 
@@ -454,92 +482,28 @@ RunService.RenderStepped:Connect(function(dt)
         setInvisible(true)
     end
 
-    -- SPEED FORZADO
+    -- SPEED
     if speedEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
-        local hum = player.Character.Humanoid
-        hum.WalkSpeed = speedValue
+        player.Character.Humanoid.WalkSpeed = speedValue
+    end
+end)
+
+-- MINIMIZAR (ARREGLADO)
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+
+    if minimized then
+        content.Visible = false
+        main.Size = UDim2.new(0,600,0,50)
+    else
+        content.Visible = true
+        main.Size = UDim2.new(0,600,0,500)
     end
 end)
 
 -- WELCOME GUI DESTROY
-task.delay(3,function()
+task.delay(3, function()
     welcomeGui:Destroy()
     gui.Enabled = true
 end)
-
-do
-    local UIS = game:GetService("UserInputService")
-    local RunService = game:GetService("RunService")
-
-    local baseOffset = content.Position.Y.Offset or 0
-    local scrollOffset = 0
-    local maxOffset = 0
-    local scrollSpeed = 30
-
-    local function recomputeBounds()
-        if content.AbsoluteSize.Y == 0 then
-            return
-        end
-
-        local maxBottom = 0
-        for _, child in ipairs(content:GetChildren()) do
-            if child:IsA("GuiObject") then
-                local posY = 0
-                if child.Position.Y.Scale ~= 0 then
-                    posY = child.Position.Y.Scale * content.AbsoluteSize.Y + child.Position.Y.Offset
-                else
-                    posY = child.Position.Y.Offset
-                end
-
-                local sizeY = 0
-                if child.Size.Y.Scale ~= 0 then
-                    sizeY = child.Size.Y.Scale * content.AbsoluteSize.Y + child.Size.Y.Offset
-                else
-                    sizeY = child.Size.Y.Offset
-                end
-
-                maxBottom = math.max(maxBottom, posY + sizeY)
-            end
-        end
-
-        local visibleH = content.AbsoluteSize.Y
-        maxOffset = math.max(0, maxBottom - visibleH)
-        scrollOffset = math.clamp(scrollOffset, 0, maxOffset)
-        content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
-    end
-
-    if content.AbsoluteSize.Y == 0 then
-        content:GetPropertyChangedSignal("AbsoluteSize"):Wait()
-    end
-    recomputeBounds()
-
-    content.ChildAdded:Connect(function()
-        task.defer(recomputeBounds)
-    end)
-    content.ChildRemoved:Connect(function()
-        task.defer(recomputeBounds)
-    end)
-
-    content:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-        task.defer(recomputeBounds)
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseWheel then
-            local delta = input.Position.Z or input.Position.Y or 0
-            scrollOffset = math.clamp(scrollOffset - delta * scrollSpeed, 0, maxOffset)
-            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
-        end
-    end)
-
-    UIS.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.PageDown then
-            scrollOffset = math.clamp(scrollOffset + (content.AbsoluteSize.Y * 0.6), 0, maxOffset)
-            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
-        elseif input.KeyCode == Enum.KeyCode.PageUp then
-            scrollOffset = math.clamp(scrollOffset - (content.AbsoluteSize.Y * 0.6), 0, maxOffset)
-            content.Position = UDim2.new(0, 0, 0, baseOffset - scrollOffset)
-        end
-    end)
-end
