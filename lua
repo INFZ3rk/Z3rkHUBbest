@@ -216,7 +216,7 @@ minimizeBtn.TextColor3 = Color3.fromRGB(200,200,200)
 minimizeBtn.BackgroundTransparency = 1
 
 ---------------------------------------------------------------------
--- SCROLLINGFRAME (con más espacio)
+-- SCROLLINGFRAME
 ---------------------------------------------------------------------
 local content = Instance.new("ScrollingFrame", main)
 content.Position = UDim2.new(0,0,0,50)
@@ -230,7 +230,8 @@ content.CanvasSize = UDim2.new(0,0,0,0)
 
 local layout = Instance.new("UIListLayout", content)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0,20) -- MÁS ESPACIO ENTRE TOGGLES
+layout.Padding = UDim.new(0,10)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 ---------------------------------------------------------------------
 -- DRAG DEL HUB
@@ -261,7 +262,7 @@ end)
 local function addToggle(y,text,callback,key)
     local frame = Instance.new("Frame")
     frame.Parent = content
-    frame.Size = UDim2.new(1,-40,0,40)
+    frame.Size = UDim2.new(1,-40,0,35)
     frame.Position = UDim2.new(0,20,0,y)
     frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
     frame.BorderSizePixel = 0
@@ -280,16 +281,16 @@ local function addToggle(y,text,callback,key)
 
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Parent = frame
-    toggleBtn.Size = UDim2.new(0,35,0,22)
-    toggleBtn.Position = UDim2.new(1,-80,0.5,-11)
+    toggleBtn.Size = UDim2.new(0,30,0,20)
+    toggleBtn.Position = UDim2.new(1,-70,0.5,-10)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
     toggleBtn.Text = ""
     Instance.new("UICorner",toggleBtn).CornerRadius = UDim.new(0,4)
 
     local keyLabel = Instance.new("TextLabel")
     keyLabel.Parent = frame
-    keyLabel.Size = UDim2.new(0,35,0,22)
-    keyLabel.Position = UDim2.new(1,-40,0.5,-11)
+    keyLabel.Size = UDim2.new(0,30,0,20)
+    keyLabel.Position = UDim2.new(1,-35,0.5,-10)
     keyLabel.BackgroundTransparency = 1
     keyLabel.Text = key and "("..key.Name..")" or ""
     keyLabel.TextColor3 = Color3.fromRGB(200,200,200)
@@ -307,7 +308,7 @@ end
 local function addSlider(y,text,min,max,default,callback)
     local frame = Instance.new("Frame")
     frame.Parent = content
-    frame.Size = UDim2.new(1,-40,0,40)
+    frame.Size = UDim2.new(1,-40,0,35)
     frame.Position = UDim2.new(0,20,0,y)
     frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
     frame.BorderSizePixel = 0
@@ -326,8 +327,8 @@ local function addSlider(y,text,min,max,default,callback)
 
     local slider = Instance.new("Frame")
     slider.Parent = frame
-    slider.Size = UDim2.new(0.5,0,0,10)
-    slider.Position = UDim2.new(0.35,0,0.5,-5)
+    slider.Size = UDim2.new(0.5,0,0,8)
+    slider.Position = UDim2.new(0.35,0,0.5,-4)
     slider.BackgroundColor3 = Color3.fromRGB(50,50,50)
     Instance.new("UICorner",slider).CornerRadius = UDim.new(0,4)
 
@@ -346,8 +347,8 @@ local function addSlider(y,text,min,max,default,callback)
 
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Parent = frame
-    valueLabel.Size = UDim2.new(0,45,1,0)
-    valueLabel.Position = UDim2.new(1,-50,0,0)
+    valueLabel.Size = UDim2.new(0,40,1,0)
+    valueLabel.Position = UDim2.new(1,-45,0,0)
     valueLabel.BackgroundTransparency = 1
     valueLabel.Text = tostring(default)
     valueLabel.TextColor3 = Color3.fromRGB(200,200,200)
@@ -405,7 +406,7 @@ end
 ---------------------------------------------------------------------
 -- AÑADIR TODOS LOS TOGGLES Y SLIDERS
 ---------------------------------------------------------------------
-local yStart, gap = 60, 85  -- MÁS ESPACIO ARRIBA Y ENTRE TOGGLES
+local yStart, gap = 20, 70
 
 addToggle(yStart + gap*0,"Aimbot",function(v)
     lockEnabled = v
@@ -500,7 +501,7 @@ addSlider(yStart + gap*10, "Jump Value", 10, 200, 50, function(v)
 end)
 
 ---------------------------------------------------------------------
--- FLY CLÁSICO RÍGIDO (KOHL'S ADMIN STYLE)
+-- FLY NORMAL (CLÁSICO RÍGIDO)
 ---------------------------------------------------------------------
 local flyEnabled = false
 local flyActive = false
@@ -509,9 +510,7 @@ local flyKey = Enum.KeyCode.F
 
 addToggle(yStart + gap*11, "Fly (F)", function(v)
     flyEnabled = v
-    if not v then
-        flyActive = false
-    end
+    if not v then flyActive = false end
     enforceCompatibility("Fly", v)
 end, flyKey)
 
@@ -600,7 +599,7 @@ UIS.InputBegan:Connect(function(input, g)
     end
 
     -----------------------------------------------------------------
-    -- FLY CLÁSICO (ACTIVAR/DESACTIVAR CON F)
+    -- FLY NORMAL (ACTIVAR/DESACTIVAR CON F)
     -----------------------------------------------------------------
     if input.KeyCode == flyKey and flyEnabled then
         flyActive = not flyActive
@@ -632,7 +631,7 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 ---------------------------------------------------------------------
--- FLY CLÁSICO (BODYGYRO + BODYVELOCITY)
+-- FLY NORMAL (BODYGYRO + BODYVELOCITY)
 ---------------------------------------------------------------------
 local function enableFly()
     local char = player.Character
@@ -744,7 +743,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     -----------------------------------------------------------------
-    -- FLY CLÁSICO (MOVIMIENTO)
+    -- FLY NORMAL (MOVIMIENTO)
     -----------------------------------------------------------------
     if flyActive and flyEnabled and player.Character then
         local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -780,7 +779,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 ---------------------------------------------------------------------
--- MINIMIZAR (ARREGLADO)
+-- MINIMIZAR
 ---------------------------------------------------------------------
 local minimized = false
 minimizeBtn.MouseButton1Click:Connect(function()
