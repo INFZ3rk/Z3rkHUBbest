@@ -383,25 +383,14 @@ end
 local function enforceCompatibility(toggleName, state)
     if toggleName == "Fly" and state and noclipEnabled then
         noclipEnabled = false
-        notify("Fly no es compatible con Noclip. Noclip desactivado.")
+        notify("Fly is not compatible with Noclip. Noclip disabled.")
     end
 
     if toggleName == "Noclip" and state and flyEnabled then
         flyEnabled = false
         flyActive = false
-        notify("Noclip no es compatible con Fly. Fly desactivado.")
+        notify("Noclip is not compatible with Fly. Fly disabled.")
     end
-
-    if toggleName == "Aimbot" and state and teleportEnabled then
-        teleportEnabled = false
-        notify("Aimbot no es compatible con Teleport. Teleport desactivado.")
-    end
-
-    if toggleName == "Teleport" and state and lockEnabled then
-        lockEnabled = false
-        notify("Teleport no es compatible con Aimbot. Aimbot desactivado.")
-    end
-end
 
 ---------------------------------------------------------------------
 -- AÑADIR TODOS LOS TOGGLES Y SLIDERS
